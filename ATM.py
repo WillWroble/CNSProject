@@ -1,8 +1,8 @@
 import requests
-from sympy.ntheory.residue_ntheory import sqrt_mod
 from app.RandNumGen import WELL1024a
 import math
 import time
+import os
 a = 2
 b = 3
 prime = "0xeb628434bcc2b89bafb2fe3e64a932dc8be90c11e954589c1120c938882ee8bba786be21787305a9bcb63c9f7ac3c2838f0c8458acfc2b62e7cbf8c1598a6d8c0d9e343662e37e37aefbe49b3fce5caafb36f03aa154fd996f15d6cec4e8f8f163182ff7c533eb40140e36861cf38e592e45127e3e02a284fcf956b0d84efc6d000ecd9b6d089f122a84725478e2cf86fce5170960c9ce838a2d71703e4ba6bcdf4e303fff1fb1e8236e02484e87f1da1857a8dabdeb5eb045673b1a06c1ff08c5c21271a432c35c6c9b38137102d9929311903afbd1ae0573e72b4b381eb6bd154236073eaa422bc98be4f141bb722a51b68a287a896bf53a79c43646842eff"
@@ -22,8 +22,24 @@ data = {
     "withdraw":0
 }
 
-seed = [i * math.ceil(time.time()) for i in range(1, 33)]
+seedstring = str(prime) #producing hopefully enough entropy
+start = math.ceil((time.time_ns()) + os.getpid() + os.getppid()) % len(seedstring)
+seed = []
+for i in range(1,33):
+    temp = ""
+    for j in range(10):
+        temp += seedstring[start]
+        start = (start + j) % len(seedstring)
+    seed.append(int(temp) & 0xFFFFFFFF)
+
 rng = WELL1024a(seed)
+temp = ""
+for j in range(6):
+    temp += seedstring[start]
+    start = (start + j) % len(seedstring)
+    rng.next()
+for i in range(int(temp)):
+    rng.next()
 
 def inverse_mod(k, p):
     return pow(k, p - 2, p)

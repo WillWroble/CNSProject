@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import time
 import math
 from RandNumGen import WELL1024a
+import os
 app = Flask(__name__)
 
 password_base = {12314:"password"}
@@ -17,8 +18,25 @@ y = 2203772622731522579052962394475977197831023010335570151215139156508813625824
 G = (x, y)  # Base point on the curve
 n = 500000  # Private key space [1, n]
 
-seed = [i * math.ceil(time.time()) for i in range(1, 33)]
+seedstring = str(prime) #producing hopefully enough entropy
+start = math.ceil((time.time_ns()) + os.getpid() + os.getppid()) % len(seedstring)
+seed = []
+for i in range(1,33):
+    temp = ""
+    for j in range(10):
+        temp += seedstring[start]
+        start = (start + j) % len(seedstring)
+    seed.append(int(temp) & 0xFFFFFFFF)
+
 rng = WELL1024a(seed)
+temp = ""
+for j in range(6):
+    temp += seedstring[start]
+    start = (start + j) % len(seedstring)
+    rng.next()
+for i in range(int(temp)):
+    rng.next()
+
 
 def inverse_mod(k, p):
     # Modular inverse using Fermat's Little Theorem (since p is prime)
