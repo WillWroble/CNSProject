@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify
-import random #have to implement custom later
+import time
+import math
+from RandNumGen import WELL1024a
 app = Flask(__name__)
 
 password_base = {12314:"password"}
@@ -14,6 +16,9 @@ x = 8079629832748665471902491202754605629108498070590073899616823369580272488719
 y = 2203772622731522579052962394475977197831023010335570151215139156508813625824089218792546257255580494331659996348183218438616526340739511725153781925643705120877251650249947326133313588916446737766811903601790542308833582853933678603162992360326735215988862365377995928015344838122052080197990610609908846044715922481149686850277302273987283535540897195091419760619661753292481125378239807262525779410513934106186217534137027380518602522976757339408305089467940297011150158944609035920100501115238876221760364851911516723717009398682105467370649922236992484994294246593757432056211293709910508917913994305037544979088
 G = (x, y)  # Base point on the curve
 n = 500000  # Private key space [1, n]
+
+seed = [i * math.ceil(time.time()) for i in range(1, 33)]
+rng = WELL1024a(seed)
 
 def inverse_mod(k, p):
     # Modular inverse using Fermat's Little Theorem (since p is prime)
@@ -62,7 +67,7 @@ def ecc_mul(k, point):
 @app.route('/handshake', methods=['POST'])
 def handshake():
     client_pub = request.get_json()["client_pub"]  # (x, y)
-    server_priv = random.randint(1, n)
+    server_priv = math.ceil(rng.next()*n)
     server_pub = ecc_mul(server_priv, G)
     shared = ecc_mul(server_priv, tuple(client_pub))  # Shared secret (x, y)
     session_keys[request.remote_addr] = shared[0]  # Use x as symmetric key
