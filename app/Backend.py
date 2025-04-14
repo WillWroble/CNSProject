@@ -13,6 +13,7 @@ password_base = {12314:"password"}
 money_base = {12314:5000}
 session_keys = {}
 byte_session_keys = {}
+numof_session_keys = {}
 
 a = 2
 b = 3
@@ -103,6 +104,15 @@ def base64_to_json(b64_bytes: bytes):
     json_str = json_bytes.decode('utf-8')
     return json.loads(json_str)
 
+def counter_and_session_key(sessionkey, counter):
+    start = (counter * 32) % len(sessionkey)
+    end = start + 32
+    chunk = sessionkey[start:end]
+    if len(chunk) < 32:
+        chunk += sessionkey[:(32-len(chunk))]
+    return(chunk)
+
+
 def sendJson(obj,byte_session_key):
     converted = json_to_base64(obj)
     cipher = TwoFish(byte_session_key[:32])
@@ -136,6 +146,7 @@ def handshake():
     shared = ecc_mul(server_priv, tuple(client_pub))  # Shared secret (x, y)
     session_keys[request.remote_addr] = shared[0]  # Use x as symmetric key
     byte_session_keys[request.remote_addr] = int_to_base64_bytes(session_keys[request.remote_addr])
+    numof_session_keys[request.remote_addr] = 0
     return jsonify({"server_pub": server_pub})
 
 
@@ -146,7 +157,8 @@ def handle_request():
 
 @app.route('/', methods=['POST'])
 def handle_post():
-    data = decrypttoJson(request.get_data(),byte_session_keys[request.remote_addr])
+    data = decrypttoJson(request.get_data(),counter_and_session_key(byte_session_keys[request.remote_addr],numof_session_keys[request.remote_addr]))
+    numof_session_keys[request.remote_addr] += 1
 
     client_ip = request.remote_addr
     if client_ip not in session_keys:
@@ -154,49 +166,49 @@ def handle_post():
     if (data["action"] == 0): #check bal
         if (data["account_id"] in password_base):
             if (password_base[data["account_id"]] == data["password"]):
-                return sendJson({"success": 0,"money" : money_base[data["account_id"]]},byte_session_keys[request.remote_addr])
+                return sendJson({"success": 0,"money" : money_base[data["account_id"]]},counter_and_session_key(byte_session_keys[request.remote_addr],numof_session_keys[request.remote_addr]))
                 #return jsonify()
-        return sendJson({"success": 1,"money" : 0},byte_session_keys[request.remote_addr])
+        return sendJson({"success": 1,"money" : 0},counter_and_session_key(byte_session_keys[request.remote_addr],numof_session_keys[request.remote_addr]))
         #return jsonify({"success": 1,"money" : 0})     
     elif (data["action"] == 1): #deposit
         if (data["account_id"] in password_base):
             if (password_base[data["account_id"]] == data["password"]):
                 money_base[data["account_id"]] = money_base[data["account_id"]] + data["deposit"]
-                return sendJson({"success": 0,"money" : data["deposit"]},byte_session_keys[request.remote_addr])
+                return sendJson({"success": 0,"money" : data["deposit"]},counter_and_session_key(byte_session_keys[request.remote_addr],numof_session_keys[request.remote_addr]))
                 #return jsonify({"success": 0,"money" : data["deposit"]})
-        return sendJson({"success": 1,"money" : 0},byte_session_keys[request.remote_addr])
+        return sendJson({"success": 1,"money" : 0},counter_and_session_key(byte_session_keys[request.remote_addr],numof_session_keys[request.remote_addr]))
         #return jsonify({"success": 1,"money" : 0})
     elif (data["action"] == 2): #withdraw
         if (data["account_id"] in password_base):
             if (password_base[data["account_id"]] == data["password"]):
                 if (data["withdraw"] > money_base[data["account_id"]]):
-                    return sendJson({"success": 3,"money" : 0},byte_session_keys[request.remote_addr])
+                    return sendJson({"success": 3,"money" : 0},counter_and_session_key(byte_session_keys[request.remote_addr],numof_session_keys[request.remote_addr]))
                     #return jsonify({"success": 3,"money" : 0})
                 else:
                     money_base[data["account_id"]] = money_base[data["account_id"]] - data["withdraw"]
-                    return sendJson({"success": 0,"money" : data["withdraw"]},byte_session_keys[request.remote_addr])
+                    return sendJson({"success": 0,"money" : data["withdraw"]},counter_and_session_key(byte_session_keys[request.remote_addr],numof_session_keys[request.remote_addr]))
                     #return jsonify({"success": 0,"money" : data["withdraw"]})
-        return sendJson({"success": 1,"money" : 0},byte_session_keys[request.remote_addr])
+        return sendJson({"success": 1,"money" : 0},counter_and_session_key(byte_session_keys[request.remote_addr],numof_session_keys[request.remote_addr]))
         #return jsonify({"success": 1,"money" : 0})
     elif (data["action"] == 3): #make account
         if (data["account_id"] in password_base):
-            return sendJson({"success": 1},byte_session_keys[request.remote_addr])
+            return sendJson({"success": 1},counter_and_session_key(byte_session_keys[request.remote_addr],numof_session_keys[request.remote_addr]))
             #return jsonify({"success": 1})
         else:
             password_base[data["account_id"]] = data["password"]
             money_base[data["account_id"]] = 0
-            return sendJson({"success": 0},byte_session_keys[request.remote_addr])
+            return sendJson({"success": 0},counter_and_session_key(byte_session_keys[request.remote_addr],numof_session_keys[request.remote_addr]))
             #return jsonify({"success": 0})
     elif (data["action"] == 4): #check pass and id
         if (data["account_id"] in password_base):
             if (password_base[data["account_id"]] == data["password"]):
-                return sendJson({"success": 0},byte_session_keys[request.remote_addr])
+                return sendJson({"success": 0},counter_and_session_key(byte_session_keys[request.remote_addr],numof_session_keys[request.remote_addr]))
                 #return jsonify({"success": 0})
-        return sendJson({"success": 1,"money" : 0},byte_session_keys[request.remote_addr])
+        return sendJson({"success": 1,"money" : 0},counter_and_session_key(byte_session_keys[request.remote_addr],numof_session_keys[request.remote_addr]))
         #return jsonify({"success": 1,"money" : 0})
     
     else:
-        return sendJson({"success": 2,"money" : 0},byte_session_keys[request.remote_addr])
+        return sendJson({"success": 2,"money" : 0},counter_and_session_key(byte_session_keys[request.remote_addr],numof_session_keys[request.remote_addr]))
         #return jsonify({"success": 2,"money" : 0}) 
 
 
