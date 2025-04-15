@@ -285,9 +285,5 @@ def welcomeloop():
             loginloop()
         if (message == "Create new Account"):
             creatnewaccountloop()
-        if (message == "sess"):
-            print(session_key)
-            res = requests.get("http://localhost:8000/")
-            print(res.json()['session_id'])
 
 welcomeloop()

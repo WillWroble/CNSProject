@@ -150,10 +150,6 @@ def handshake():
     return jsonify({"server_pub": server_pub})
 
 
-@app.route('/', methods=['GET'])
-def handle_request():
-    return jsonify({'session_id': session_keys[request.remote_addr]})
-
 
 @app.route('/', methods=['POST'])
 def handle_post():
